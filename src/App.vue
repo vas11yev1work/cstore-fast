@@ -1,30 +1,49 @@
 <template>
-  <div id="nav">
-    <router-link to="/">Home</router-link> |
-    <router-link to="/about">About</router-link>
+  <div class="container" :style="{ maxWidth: `${container}px` }">
+    <div class="content">
+      <img src="./assets/logo.svg" class="logo" alt="logo">
+      <router-view/>
+    </div>
   </div>
-  <router-view/>
 </template>
 
-<style lang="scss">
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
+<script>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router'
+
+export default {
+  setup() {
+    const route = useRoute()
+
+    const container = computed(() => {
+      return route.meta['container'] || 420
+    })
+
+    return { container }
+  }
+}
+</script>
+
+<style>
+.container {
+  margin: 40px auto;
+  width: 100%;
 }
 
-#nav {
-  padding: 30px;
+.logo {
+  width: 300px;
+  margin-bottom: 40px;
+}
 
-  a {
-    font-weight: bold;
-    color: #2c3e50;
-
-    &.router-link-exact-active {
-      color: #42b983;
-    }
+@media (max-width: 350px) {
+  .logo {
+    width: 240px;
   }
+}
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 </style>

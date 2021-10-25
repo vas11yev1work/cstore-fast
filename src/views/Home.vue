@@ -1,18 +1,55 @@
 <template>
-  <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <div class="page home">
+    <h1 class="title">Отслеживание</h1>
+    <p class="description">Введите трек-номер для отслеживания своего заказа 📦</p>
+    <form @submit.prevent="$router.push(`/${track}`)">
+      <input v-model="track" type="text" placeholder="Введите трек-номер">
+      <button type="submit">
+        <img src="../assets/truck-line.svg" alt="svg">
+      </button>
+    </form>
   </div>
 </template>
 
 <script>
-// @ is an alias to /src
-import HelloWorld from '@/components/HelloWorld.vue'
+import { ref } from 'vue'
 
 export default {
   name: 'Home',
-  components: {
-    HelloWorld
+  setup() {
+    const track = ref('')
+
+    return { track }
   }
 }
 </script>
+
+<style lang="scss" scoped>
+.home {
+  form {
+    display: flex;
+    margin-top: 20px;
+    input {
+      margin-right: 10px;
+      height: 40px;
+      width: 100%;
+      border: 1px solid #e5e5e5;
+      border-radius: 3px;
+      font-size: 14px;
+      padding: 0 10px;
+      font-weight: 500;
+      outline: none;
+    }
+    button {
+      height: 40px;
+      min-width: 40px;
+      background-color: #de4343;
+      border: none;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}
+</style>
