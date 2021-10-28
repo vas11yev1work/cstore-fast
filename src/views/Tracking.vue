@@ -1,186 +1,318 @@
 <template>
-  <div class="page tracking">
-    <h1 class="title">Информация о заказе</h1>
-    <div class="order-data" v-if="orderData.data">
-      <ul class="order-info">
-        <li class="info-item">
-          <b>Адрес: </b>
-          <span>{{ address }}</span>
-        </li>
-        <li class="info-item">
-          <b>Способ доставки: </b>
-          <span>{{ deliveryMethod }}</span>
-        </li>
-        <li class="info-item">
-          <b>Статус: </b>
-          <span class="status" :class="status.color">{{ status.status }}</span>
-        </li>
-      </ul>
-      <div class="order-items">
-        <div class="item" v-for="(item, i) in orderData.data.items" :key="i">
-          <ul class="order-info">
-            <li class="info-item">
-              <b>Название: </b>
-              <span>{{ item.catalogItem.name }}</span>
-            </li>
-            <li class="info-item">
-              <b>Цена: </b>
-              <span>{{ item.catalogItem.price }}₽</span>
-            </li>
-            <li class="info-item">
-              <b>Количество: </b>
-              <span>{{ item.amount || 0 }} шт.</span>
-            </li>
-            <li class="info-item">
-              <b>Стоимость: </b>
-              <span>{{ item.amount * +item.catalogItem.price || 0 }}₽</span>
-            </li>
-          </ul>
-          <div class="pictures">
-            <img v-for="(photo, index) in item.catalogItem.photos" :src="photo" :alt="photo" :key="index" />
-          </div>
-        </div>
+  <div class="page tracking" v-if="order.data">
+    <div class="info-block">
+      <div class="title-block">
+        <truck />
+        <h2 class="tracking-title">Информация о доставке</h2>
       </div>
-      <ul class="order-info">
+      <ul class="info-list">
         <li class="info-item">
-          <b>Итого: </b>
-          <span>{{ orderData.data.total || '0' }}₽</span>
+          Адрес:
+          <b>{{ address }}</b>
+        </li>
+        <li class="info-item">
+          Способ доставки:
+          <b>{{ deliveryMethod }}</b>
+        </li>
+        <li class="info-item" v-if="track">
+          Номер отслеживания:
+          <b>{{ track }}</b>
         </li>
       </ul>
     </div>
-    <button class="pay">Оплатить заказ</button>
+    <div class="info-block">
+      <div class="title-block">
+        <shopping />
+        <h2 class="tracking-title">Информация о заказе</h2>
+      </div>
+      <ul class="info-list">
+        <li class="info-item">
+          Статус:
+          <status :value="status" />
+        </li>
+      </ul>
+    </div>
+    <div class="order-items">
+      <div class="order-item" v-for="(item, index) in orderItems" :key="index">
+        <h3 class="order-title">{{ item.catalogItem.name }}</h3>
+        <ul class="info-list">
+          <li class="info-item">
+            Описание:
+            <b>{{ item.catalogItem.description }}</b>
+          </li>
+          <li class="info-item">
+            Размер:
+            <b>RU 48</b>
+          </li>
+          <li class="info-item">
+            Цвет:
+            <b>Асфальт</b>
+          </li>
+          <li class="info-item">
+            Цена:
+            <b>{{ item.catalogItem.price }}₽</b>
+          </li>
+          <li class="info-item">
+            Количество:
+            <b>{{ item.amount }} шт.</b>
+          </li>
+          <li class="info-item">
+            Стоимость:
+            <b>{{ item.catalogItem.price * item.amount }}₽</b>
+          </li>
+        </ul>
+        <div class="images">
+          <div class="image-wrap" v-for="(image, i) in item.catalogItem.photos" :key="i">
+            <img :src="image" alt="image">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pay-info">
+      <div class="info-wrap">
+        <div class="pay-info-item">
+          <span>Товары</span>
+          <span>{{ total }}₽</span>
+        </div>
+        <div class="pay-info-item">
+          <span>Доставка</span>
+          <span>0₽</span>
+        </div>
+      </div>
+      <div class="pay-total">
+        <span>Общая стоимость</span>
+        <span class="price">{{ total }}₽</span>
+      </div>
+    </div>
+    <button class="pay" @click="pay">Оплатить заказ — {{ forPayment }}₽</button>
   </div>
 </template>
 
-<script>
-import axios from 'axios'
+<script lang="ts">
+import { computed, defineComponent, onBeforeMount, reactive } from 'vue'
+import Truck from '@/icons/Truck.vue'
+import Shopping from '@/icons/Shopping.vue'
+import Status from '@/components/Status.vue'
+import { OrderService } from '@/services/order.service'
 import { useRoute } from 'vue-router'
-import { computed, onBeforeMount, reactive, ref } from 'vue'
+import { DeliveryMethod, OrderTypes } from '@/types/order.types'
 
-export default {
+export default defineComponent({
+  components: { Status, Shopping, Truck },
   setup() {
+    const orderService = new OrderService()
     const route = useRoute()
-    const orderNotFound = ref(false)
-    const orderData = reactive({
+
+    const order = reactive<{ data: OrderTypes | null }>({
       data: null
     })
 
-    async function getOrder() {
-      try {
-        const { data } = await axios.get(`https://api.4be.site/order/fast-view/${route.params.id}`)
-        console.log(data)
-        if (data === '') {
-          orderNotFound.value = true
-          return
-        }
-        orderData.data = { ...data }
-      } catch (e) {
-        console.log(e)
-      }
-    }
+    const id = computed(() => {
+      if (typeof route.params.id === 'string') return route.params.id
+      return ''
+    })
 
     const address = computed(() => {
-      if (orderData.data.address && orderData.data.address.address1) {
+      if (order.data) {
         return `${
-          orderData.data.country || 'Россия'
+          order.data.address.country
         }, ${
-          orderData.data.city || 'Санкт-Петербург'
-        },  ${
-          orderData.data.address.address1}${orderData.data.address.address2
-          ? `, ${orderData.data.address.address2}`
-          : ''
+          order.data.address.city
+        }, ${
+          order.data.address.address1
+        }${
+          order.data.address.address2
+            ? `, ${order.data.address.address2}`
+            : ''
         }`
       }
-      return 'отсутствует'
+      return ''
     })
 
     const deliveryMethod = computed(() => {
-      if (orderData.data.deliveryMethod === 'RussianPost') {
-        return 'Почта России'
+      if (order.data) {
+        switch (order.data.deliveryMethod) {
+          case DeliveryMethod.RUSSIAN_POST:
+            return 'Почта России'
+          default:
+            return 'Почта России'
+        }
       }
       return 'Почта России'
     })
 
+    const track = computed(() => {
+      if (order.data) {
+        return order.data.trackCode
+      }
+      return ''
+    })
+
     const status = computed(() => {
-      if (orderData.data.status === 'created') {
-        return {
-          status: 'Создан',
-          color: 'green'
-        }
+      if (order.data) {
+        return order.data.status
       }
-      return {
-        status: 'Создан',
-        color: 'green'
+      return 'created'
+    })
+
+    const total = computed(() => {
+      if (order.data) {
+        return +order.data.total
       }
+      return '0₽'
+    })
+
+    const forPayment = computed(() => {
+      if (order.data) {
+        return +order.data.total - +order.data.paid
+      }
+      return '0₽'
+    })
+
+    const orderItems = computed(() => {
+      if (order.data) {
+        return order.data.items
+      }
+      return null
     })
 
     onBeforeMount(async () => {
-      await getOrder()
+      order.data = await orderService.getOrder(id.value)
     })
 
-    return { orderData, address, deliveryMethod, status }
+    async function pay() {
+      const info = await orderService.payByToken(id.value)
+      window.open(info.confirmation_url)
+    }
+
+    return {
+      order,
+      address,
+      deliveryMethod,
+      track,
+      status,
+      total,
+      forPayment,
+      orderItems,
+      pay
+    }
   }
-}
+})
 </script>
 
 <style lang="scss" scoped>
 .tracking {
   width: 100%;
-  .order-data {
-    width: 100%;
-    .order-info {
-      font-size: 14px;
-      .info-item {
-        line-height: 1.5;
-        margin-bottom: 7px;
-        &:last-child {
-          margin-bottom: 0;
-        }
-        .status {
-          &.green {
-            background-color: #34a834;
-            color: #ffffff;
-            font-weight: 500;
-            text-transform: uppercase;
-            border-radius: 2px;
-            padding: 2px 5px;
-          }
-        }
+  .info-block {
+    margin-bottom: 30px;
+    &:last-child {
+      margin-bottom: 0;
+    }
+    .title-block {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      .tracking-title {
+        margin-left: 8px;
+        font-size: 16px;
       }
     }
-    .order-items {
-      margin: 15px 0;
-      .item {
-        background-color: #f6f6f6;
-        padding: 10px 15px;
-        border-radius: 8px;
+  }
+  .info-list {
+    .info-item {
+      font-size: 14px;
+      line-height: 22px;
+      margin-bottom: 7px;
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+  .order-items {
+    margin-bottom: 20px;
+    .order-item {
+      background-color: #F2F2F2;
+      border: 1px solid #E5E5E5;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      &:last-child {
+        margin-bottom: 0;
+      }
+      .order-title {
         margin-bottom: 10px;
-        &:last-child {
-          margin-bottom: 0;
-        }
-        .pictures {
-          margin-top: 10px;
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          grid-gap: 15px;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .images {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        grid-gap: 15px;
+        .image-wrap {
+          position: relative;
+          &::before {
+            content: '';
+            padding-top: 100%;
+            display: block;
+            grid-area: 1 / 1 / 2 / 2;
+          }
           img {
-            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            aspect-ratio: 1;
+            height: 100%;
+            object-fit: cover;
+            grid-area: 1 / 1 / 2 / 2;
           }
         }
       }
     }
   }
-}
-.pay {
-  height: 40px;
-  width: 100%;
-  background-color: #de4343;
-  color: #ffffff;
-  border-radius: 3px;
-  border: none;
-  font-size: 14px;
-  margin-top: 15px;
+  .pay-info {
+    .info-wrap {
+      .pay-info-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 7px;
+        &:last-child {
+          margin-bottom: 0;
+        }
+        span {
+          font-size: 14px;
+          font-weight: 600;
+        }
+      }
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #E5E5E5;
+    }
+    .pay-total {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      span {
+        font-size: 16px;
+        font-weight: 700;
+        &.price {
+          color: #de4343;
+        }
+      }
+    }
+  }
+  .pay {
+    width: 100%;
+    margin-top: 30px;
+    height: 50px;
+    background-color: #de4343;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+  }
 }
 </style>

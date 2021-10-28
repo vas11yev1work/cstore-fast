@@ -7,11 +7,13 @@
   </div>
 </template>
 
-<script>
-import { computed } from 'vue';
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
-export default {
+export default defineComponent({
+  name: 'App',
   setup() {
     const route = useRoute()
 
@@ -21,7 +23,7 @@ export default {
 
     return { container }
   }
-}
+})
 </script>
 
 <style>
