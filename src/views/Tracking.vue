@@ -2,15 +2,15 @@
   <div class="page tracking" v-if="order.data">
     <div class="info-block">
       <div class="title-block">
-        <truck />
+        <img src="../assets/delivery.svg" alt="delivery">
         <h2 class="tracking-title">Информация о доставке</h2>
       </div>
       <ul class="info-list">
-        <li class="info-item">
+        <li class="info-item" v-if="address">
           Адрес:
           <b>{{ address }}</b>
         </li>
-        <li class="info-item">
+        <li class="info-item" v-if="deliveryMethod">
           Способ доставки:
           <b>{{ deliveryMethod }}</b>
         </li>
@@ -22,7 +22,7 @@
     </div>
     <div class="info-block">
       <div class="title-block">
-        <shopping />
+        <img src="../assets/shopping-bag.svg" alt="delivery">
         <h2 class="tracking-title">Информация о заказе</h2>
       </div>
       <ul class="info-list">
@@ -36,39 +36,39 @@
       <div class="order-item" v-for="(item, index) in orderItems" :key="index">
         <h3 class="order-title">{{ item.catalogItem.name }}</h3>
         <ul class="info-list">
-          <li class="info-item">
+          <li class="info-item" v-if="item.catalogItem.description">
             Описание:
             <b>{{ item.catalogItem.description }}</b>
           </li>
-          <li class="info-item">
+          <li class="info-item" v-if="item.sizeId">
             Размер:
-            <b>RU 48</b>
+            <b>{{ item.sizeId }}</b>
           </li>
-          <li class="info-item">
+          <li class="info-item" v-if="item.catalogItem.itemColors.length">
             Цвет:
-            <b>Асфальт</b>
+            <b>{{ item.catalogItem.itemColors.map(x => x.name).join(', ').toLowerCase() }}</b>
           </li>
-          <li class="info-item">
+          <li class="info-item" v-if="item.catalogItem.price">
             Цена:
             <b>{{ item.catalogItem.price }}₽</b>
           </li>
-          <li class="info-item">
+          <li class="info-item" v-if="item.amount">
             Количество:
             <b>{{ item.amount }} шт.</b>
           </li>
-          <li class="info-item">
+          <li class="info-item" v-if="item.amount && item.catalogItem.price">
             Стоимость:
             <b>{{ item.catalogItem.price * item.amount }}₽</b>
           </li>
         </ul>
-        <div class="images">
+        <div class="images" v-if="item.catalogItem.photos.length">
           <div class="image-wrap" v-for="(image, i) in item.catalogItem.photos" :key="i">
             <img :src="image" alt="image">
           </div>
         </div>
       </div>
     </div>
-    <div class="pay-info">
+    <div class="pay-info" v-if="total">
       <div class="info-wrap">
         <div class="pay-info-item">
           <span>Товары</span>
@@ -81,27 +81,39 @@
       </div>
       <div class="pay-total">
         <span>Общая стоимость</span>
-        <span class="price">{{ total }}₽</span>
+        <span class="price" :class="{ paid: forPayment === 0 }">{{ total }}₽</span>
       </div>
     </div>
-    <button class="pay" @click="pay">Оплатить заказ — {{ forPayment }}₽</button>
+    <button class="pay" @click="pay" :class="{ paid: forPayment === 0 }" :disabled="loading">
+      {{ forPayment !== 0 ? `Оплатить заказ — ${forPayment}₽` : 'Заказ оплачен' }}
+    </button>
+  </div>
+  <div class="not-found page" v-else-if="notFound">
+    <p class="description">К сожалению заказ не найден 😥</p>
+    <p class="description">Ты можешь написать нам, чтобы оформить заказ!</p>
+    <div class="button-wrap">
+      <a href="https://instagram.com/severside.store" target="_blank" class="inst">Перейти в инстаграм</a>
+    </div>
+  </div>
+  <div class="loading page" v-else-if="loading">
+    <img src="../assets/loader.svg" alt="loader">
   </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, onBeforeMount, reactive } from 'vue'
-import Truck from '@/icons/Truck.vue'
-import Shopping from '@/icons/Shopping.vue'
+import { computed, defineComponent, onBeforeMount, reactive, ref } from 'vue'
 import Status from '@/components/Status.vue'
-import { OrderService } from '@/services/order.service'
+import { ApiService } from '@/services/api.service'
 import { useRoute } from 'vue-router'
-import { DeliveryMethod, OrderTypes } from '@/types/order.types'
+import { DeliveryMethod, OrderTypes } from '@/types/api.types'
 
 export default defineComponent({
-  components: { Status, Shopping, Truck },
+  components: { Status },
   setup() {
-    const orderService = new OrderService()
+    const orderService = new ApiService()
     const route = useRoute()
+    const notFound = ref(false)
+    const loading = ref(false)
 
     const order = reactive<{ data: OrderTypes | null }>({
       data: null
@@ -138,7 +150,7 @@ export default defineComponent({
             return 'Почта России'
         }
       }
-      return 'Почта России'
+      return ''
     })
 
     const track = computed(() => {
@@ -159,30 +171,50 @@ export default defineComponent({
       if (order.data) {
         return +order.data.total
       }
-      return '0₽'
+      return 0
     })
 
     const forPayment = computed(() => {
       if (order.data) {
         return +order.data.total - +order.data.paid
       }
-      return '0₽'
+      return 0
     })
 
     const orderItems = computed(() => {
       if (order.data) {
         return order.data.items
       }
-      return null
+      return []
     })
 
     onBeforeMount(async () => {
-      order.data = await orderService.getOrder(id.value)
+      try {
+        loading.value = true
+        order.data = await orderService.getOrder(id.value)
+      } catch {
+        notFound.value = true
+      } finally {
+        loading.value = false
+      }
     })
 
     async function pay() {
-      const info = await orderService.payByToken(id.value)
-      window.open(info.confirmation_url)
+      try {
+        if (forPayment.value !== 0) {
+          loading.value = true
+          const info = await orderService.payByToken(id.value)
+          if (!info.confirmation_url) return
+          const a = document.createElement('a')
+          a.setAttribute('href', info.confirmation_url)
+          a.setAttribute('target', '_blank')
+          a.click()
+        }
+      } catch (e) {
+        console.log(e)
+      } finally {
+        loading.value = false
+      }
     }
 
     return {
@@ -194,6 +226,8 @@ export default defineComponent({
       total,
       forPayment,
       orderItems,
+      notFound,
+      loading,
       pay
     }
   }
@@ -298,6 +332,9 @@ export default defineComponent({
         font-weight: 700;
         &.price {
           color: #de4343;
+          &.paid {
+            color: #64C999;
+          }
         }
       }
     }
@@ -313,6 +350,29 @@ export default defineComponent({
     border: none;
     border-radius: 3px;
     cursor: pointer;
+    &:disabled {
+      opacity: 0.8;
+    }
+    &.paid {
+      background-color: #64C999;
+    }
+  }
+}
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  .button-wrap {
+    .inst {
+      display: block;
+      margin-top: 10px;
+      padding: 10px 16px;
+      background-color: #de4343;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 600;
+      border-radius: 5px;
+    }
   }
 }
 </style>

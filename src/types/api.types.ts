@@ -156,3 +156,9 @@ export enum ConfirmationType {
   REDIRECT = 'redirect',
   EMBEDDED = 'embedded'
 }
+
+export interface Size {
+  id: number
+  size: number
+  sizeName: string
+}

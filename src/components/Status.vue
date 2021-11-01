@@ -6,7 +6,7 @@
 
 <script lang="ts">
 import { computed, defineComponent } from 'vue'
-import { OrderStatus } from '@/types/order.types'
+import { OrderStatus } from '@/types/api.types'
 
 export default defineComponent({
   name: 'Status',

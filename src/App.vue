@@ -2,14 +2,13 @@
   <div class="container" :style="{ maxWidth: `${container}px` }">
     <div class="content">
       <img src="./assets/logo.svg" class="logo" alt="logo">
-      <router-view/>
+      <router-view />
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
-import { computed } from 'vue'
+import { computed, defineComponent } from 'vue'
 import { useRoute } from 'vue-router'
 
 export default defineComponent({

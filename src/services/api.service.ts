@@ -1,7 +1,7 @@
 import axios  from 'axios'
-import { OrderTypes, PaymentConfirmation } from '@/types/order.types'
+import { OrderTypes, PaymentConfirmation, Size } from '@/types/api.types'
 
-export class OrderService {
+export class ApiService {
   async getOrder(token: string): Promise<OrderTypes> {
     try {
       const { data } = await axios.get<OrderTypes>(`https://api.4be.site/order/fast-view/${token}`)
@@ -16,6 +16,14 @@ export class OrderService {
       return data
     } catch {
       throw new Error('Произошла ошибка при попытке оплаты')
+    }
+  }
+  async getSizes(): Promise<Size[]> {
+    try {
+      const { data } = await axios.get<Size[]>('https://api.4be.site/item-size')
+      return data
+    } catch {
+      throw new Error('Произошла ошибка при получении цветов')
     }
   }
 }

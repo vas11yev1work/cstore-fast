@@ -5,7 +5,7 @@
     <form @submit.prevent="$router.push({ name: 'Tracking', params: { id: track }})">
       <input v-model="track" type="text" placeholder="Введите трек-номер">
       <button type="submit">
-        <truck color="white" />
+        <img src="../assets/truck.svg" alt="truck">
       </button>
     </form>
   </div>
@@ -14,11 +14,9 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { ref } from 'vue'
-import Truck from '@/icons/Truck.vue'
 
 export default defineComponent({
   name: 'Home',
-  components: { Truck },
   setup() {
     const track = ref('')
 
