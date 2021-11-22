@@ -1,6 +1,6 @@
 export interface OrderTypes {
   readonly id: number
-  readonly items: OrderItemAttributes[]
+  readonly items: Array<OrderItemAttributes | DeliveryOrderItemAttributes>
   readonly address: AddressInfoAttributes
   readonly status: OrderStatus
   readonly paymentMethod: PaymentMethod
@@ -81,6 +81,20 @@ export interface OrderItemAttributes {
   readonly amount: number
   readonly sizeId: number
   readonly catalogItem: CatalogItemArchivedAttributes
+  readonly itemType: string
+}
+
+export enum DeliveryMethod {
+  PickPoint = 'pickpoint',
+  Courier = 'courier',
+  Office = 'office'
+}
+
+export interface DeliveryOrderItemAttributes {
+  readonly deliveryMethod: DeliveryMethod
+  readonly deliveryProvider: string
+  readonly itemType: string
+  readonly price: string
 }
 
 export interface CatalogItemArchivedAttributes {

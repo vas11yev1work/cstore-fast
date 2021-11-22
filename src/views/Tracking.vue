@@ -10,9 +10,9 @@
           Адрес:
           <b>{{ address }}</b>
         </li>
-        <li class="info-item" v-if="deliveryMethod">
+        <li class="info-item" v-if="delivery">
           Способ доставки:
-          <b>{{ deliveryMethod }}</b>
+          <b>{{ delivery }}</b>
         </li>
         <li class="info-item" v-if="track">
           Номер отслеживания:
@@ -68,15 +68,15 @@
         </div>
       </div>
     </div>
-    <div class="pay-info" v-if="total">
+    <div class="pay-info">
       <div class="info-wrap">
-        <div class="pay-info-item">
+        <div class="pay-info-item" v-if="total">
           <span>Товары</span>
-          <span>{{ total }}₽</span>
+          <span>{{ itemsPrice }}₽</span>
         </div>
-        <div class="pay-info-item">
+        <div class="pay-info-item" v-if="deliveryPrice">
           <span>Доставка</span>
-          <span>0₽</span>
+          <span>{{ deliveryPrice }}₽</span>
         </div>
       </div>
       <div class="pay-total">
@@ -105,7 +105,7 @@ import { computed, defineComponent, onBeforeMount, reactive, ref } from 'vue'
 import Status from '@/components/Status.vue'
 import { ApiService } from '@/services/api.service'
 import { useRoute } from 'vue-router'
-import { DeliveryMethod, OrderTypes } from '@/types/api.types'
+import { DeliveryMethod, DeliveryOrderItemAttributes, OrderItemAttributes, OrderTypes } from '@/types/api.types'
 
 export default defineComponent({
   components: { Status },
@@ -141,18 +141,6 @@ export default defineComponent({
       return ''
     })
 
-    const deliveryMethod = computed(() => {
-      if (order.data) {
-        switch (order.data.deliveryMethod) {
-          case DeliveryMethod.RUSSIAN_POST:
-            return 'Почта России'
-          default:
-            return 'Почта России'
-        }
-      }
-      return ''
-    })
-
     const track = computed(() => {
       if (order.data) {
         return order.data.trackCode
@@ -183,9 +171,63 @@ export default defineComponent({
 
     const orderItems = computed(() => {
       if (order.data) {
-        return order.data.items
+        return order.data.items.filter(x => x.itemType === 'CatalogOrderItem') as OrderItemAttributes[]
       }
       return []
+    })
+
+    const deliveryData = computed(() => {
+      if (order.data) {
+        return order.data.items.find(x => x.itemType === 'DeliveryOrderItem') as DeliveryOrderItemAttributes
+      }
+      return null
+    })
+
+    const deliveryProvider = computed(() => {
+      if (order.data) {
+        switch (deliveryData.value?.deliveryProvider) {
+          case 'ozon':
+            return 'Озон'
+          default:
+            return 'Озон'
+        }
+      }
+      return ''
+    })
+    
+    const delivery = computed(() => {
+      if (order.data) {
+        return `${deliveryProvider.value}${deliveryMethod.value ? `, ${deliveryMethod.value}` : ''}`
+      }
+      return ''
+    })
+
+    const deliveryMethod = computed(() => {
+      if (order.data) {
+        switch (deliveryData.value?.deliveryMethod) {
+          case DeliveryMethod.Courier:
+            return 'курьер'
+          case DeliveryMethod.Office:
+            return 'постамат'
+          case DeliveryMethod.PickPoint:
+            return 'пункт выдачи'
+        }
+      }
+      return ''
+    })
+
+    const deliveryPrice = computed(() => {
+      if (order.data) {
+        return +(deliveryData.value?.price || 0) || 0
+      }
+      return 0
+    })
+
+    const itemsPrice = computed(() => {
+      if (order.data) {
+        return orderItems.value.reduce((acc, v) => acc + +v.catalogItem.price, 0)
+      }
+      return 0
     })
 
     onBeforeMount(async () => {
@@ -218,6 +260,9 @@ export default defineComponent({
     }
 
     return {
+      deliveryPrice,
+      deliveryData,
+      delivery,
       order,
       address,
       deliveryMethod,
@@ -228,6 +273,7 @@ export default defineComponent({
       orderItems,
       notFound,
       loading,
+      itemsPrice,
       pay
     }
   }
